@@ -12,6 +12,7 @@ import javafx.stage.Stage;
 public class TetrisApp extends Application {
 
     private VBox spine;
+    private TetrisBoard gameBoard;
 
     /**
      * Starts the javafx Tetris application
@@ -20,6 +21,9 @@ public class TetrisApp extends Application {
     public void start(Stage stage) {
 
         this.spine = new VBox();
+        this.gameBoard = new TetrisBoard(TetrisBoard.GameType.RANDOM);
+
+        this.spine.getChildren().addAll(gameBoard);
 
         Scene scene = new Scene(this.spine);
 
