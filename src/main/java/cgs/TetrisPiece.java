@@ -13,13 +13,13 @@ public class TetrisPiece {
         OPIECE, SPIECE, ZPIECE, TPIECE, JPIECE, LPIECE, IPIECE;
     }
 
-    public static ArrayList<Color> colorBank = new ArrayList<> (Arrays.asList(
+    public ArrayList<Color> colorBank = new ArrayList<> (Arrays.asList(
         new Color[] { Color.BLUE, Color.CYAN, Color.GREEN,
         Color.MAGENTA, Color.ORANGE, Color.PINK, Color.RED, Color.WHITE
         }
         ));
 
-    public static  ArrayList<Color> usedColors = new ArrayList<>();
+    public ArrayList<Color> usedColors = new ArrayList<>();
 
     public static double CLOCKWISE = Math.PI * 0.5;
     public static double COUNTERCLOCKWISE = Math.PI * -0.5;
@@ -30,18 +30,25 @@ public class TetrisPiece {
 
     public TetrisPiece(Pieces piece) {
         //this.color = COLOR_BANK.get(int)(Math.random() * COLOR_BANK.length));
-        this.color = selectColor();
+        this.color = this.selectColor();
         this.spaces = new SimpleMatrix(findSpaces(piece));
         this.loc = new int[] {TetrisBoard.getWidth() / 2, 0};
-        System.out.println(spaces);
-        System.out.printf("X-coordinate: %d Y-coordinate: %d\n",loc[0], loc[1]);
-        System.out.println(piece);
+        //System.out.println(spaces);
+        //System.out.printf("X-coordinate: %d Y-coordinate: %d\n",loc[0], loc[1]);
+        //System.out.println(piece);
     }
 
-    private static Color selectColor() {
-        if (colorBank.isEmpty()) {
-            colorBank = usedColors;
-            usedColors = new ArrayList<>();
+    public TetrisPiece(Pieces piece, int[] loc) {
+        this.color = this.selectColor();
+        this.spaces = new SimpleMatrix(findSpaces(piece));
+        this.loc = loc;
+    }
+
+    private Color selectColor() {
+        if (this.colorBank.isEmpty()) {
+            this.colorBank = this.usedColors;
+            this.usedColors = new ArrayList<>();
+            this.usedColors.add(this.colorBank.remove(this.colorBank.size() - 1));
         }
         Color select =  colorBank.remove((int)(Math.random() * colorBank.size()));
         usedColors.add(select);
@@ -49,10 +56,12 @@ public class TetrisPiece {
     }
 
 
-    public void rotatePiece(double radians) {
+    public void rotatePiece(int rotations) {
+        double radians = rotations * Math.PI / 2;
         SimpleMatrix rotation = new SimpleMatrix(new double[][] {
             {Math.cos(radians), Math.sin(radians)}, {-1 * Math.sin(radians), Math.cos(radians)}});
-        this.spaces = rotation.mult(this.spaces);
+        System.out.println(rotation + " " + this.spaces);
+        this.spaces = this.spaces.mult(rotation);
     }
 
     public Color getColor() {

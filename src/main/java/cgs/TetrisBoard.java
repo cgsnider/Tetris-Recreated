@@ -7,7 +7,8 @@ import javafx.embed.swing.SwingFXUtils;
 import java.awt.image.BufferedImage;
 import java.awt.Color;
 import java.util.Arrays;
-import java.util.stream.Stream;
+import java.util.List;
+import javafx.scene.input.KeyCode;
 
 /**
  * The componet that contains the falling shapes.
@@ -39,9 +40,14 @@ public class TetrisBoard extends ImageView {
     private Marker[][] grid;
     private BufferedImage board;
     private TetrisPiece piece;
+    private GameType type;
+    private boolean gameOver = false;
+    private List<KeyCode> controls;
 
-    public TetrisBoard(GameType type) {
+    public TetrisBoard(GameType type, List<KeyCode> controls) {
         this.grid = new Marker[HORIZONTAL_SPACES][VERTICLE_SPACES];
+        this.type = type;
+        this.controls = controls;
         this.board =  new BufferedImage(
             HORIZONTAL_SPACES * DISPLAY_SCALE, VERTICLE_SPACES * DISPLAY_SCALE,
             BufferedImage.TYPE_BYTE_INDEXED);
@@ -54,6 +60,7 @@ public class TetrisBoard extends ImageView {
             }
         }
         this.setImage(SwingFXUtils.toFXImage(board, null));
+
 
 /*        System.out.println(this.isValidUpdate(this.piece.getSpaces()));
         this.updateGrid(this.piece.getSpaces(), false);
@@ -68,48 +75,90 @@ public class TetrisBoard extends ImageView {
         }
         System.out.println();
 */
-        Thread gamePlay = new Thread ( () -> {
-            boolean gameOver = false;
-            while (!gameOver) {
-                this.piece = this.selectPiece(type);
-                if (this.isValidUpdate(this.piece.getSpaces())) {
-                    this.updateGrid(this.piece.getSpaces(),false);
-                    this.updateBoard();
-                    boolean isFalling = true;
-                    while (isFalling) {
-
-                        try {
-                            Thread.sleep(DELAY);
-                        } catch(InterruptedException ie) {
-                            System.err.println(ie);
-                            System.exit(3);
-                        }
-                        this.piece.movePiece(FALLING_VECTOR);
-                        if (this.isValidUpdate(this.piece.getSpaces())) {
-                            this.updateGrid(this.piece.getSpaces(), false);
-                        } else {
-                            this.updateGrid(null, true);
-                            isFalling = false;
-                        }
-                        this.updateBoard();
-                        System.out.println("isFalling: " + isFalling);
-                    }
-                } else {
-                    gameOver = true;
-                }
-            }
-        });
+        Thread gamePlay = new Thread(this::gameplayLoop);
 
         gamePlay.setDaemon(true);
         gamePlay.start();
 
     }
 
+    private void gameplayLoop() {
+        int[] movement = new int[] {0, 0, 0};
+        while (!gameOver) {
+            this.piece = this.selectPiece(this.type);
+            if (this.isValidUpdate(this.piece.getSpaces())) {
+                this.updateGrid(this.piece.getSpaces(),false);
+                this.updateBoard();
+                boolean isFalling = true;
+                while (isFalling) {
+                    /*vector = controller.getMoveVector();
+                    rotation = controller.getRotation();
+                    System.out.println(Arrays.toString(vector));
+                    System.out.println(rotation);
+                    */
+                    try {
+                        Thread.sleep(DELAY);
+                    } catch(InterruptedException ie) {
+                        System.err.println(ie);
+                        System.exit(3);
+                    }
+                    movement = this.processInput();
+                    if (movement[0] != 0 || movement[1] != 0) {
+                        this.piece.movePiece(new int[] {movement[0], movement[1]});
+                    }
+                    if (movement[2] != 0) {
+                        this.piece.rotatePiece(movement[2]);
+                    }
+                    this.piece.movePiece(FALLING_VECTOR);
+                    if (this.isValidUpdate(this.piece.getSpaces())) {
+                        this.updateGrid(this.piece.getSpaces(), false);
+                    } else {
+
+                        this.updateGrid(null, true);
+                        isFalling = false;
+                    }
+                    this.updateBoard();
+                    //System.out.println("isFalling: " + isFalling);
+                }
+            } else {
+                this.gameOver = true;
+            }
+        }
+    }
+
+    private int[] processInput() {
+        int[] vector = new int[] {0,0,0};
+        KeyCode[] options = new KeyCode[] {KeyCode.A, KeyCode.S, KeyCode.D, KeyCode.Q, KeyCode.E};
+        for (KeyCode opt : options) {
+            int index = this.controls.indexOf(opt);
+            while (index != -1) {
+                switch (opt) {
+                case A: vector[0]--;
+                    break;
+                case S: vector[1]++;
+                    break;
+                case D: vector[0]++;
+                    break;
+                case Q: vector[2]--;
+                    break;
+                case E: vector[2]++;
+                    break;
+                } //switch
+                this.controls.remove(index);
+                index = this.controls.indexOf(opt);
+                System.out.println(this.controls);
+            } //while
+        } //for-each
+        return vector;
+    }
+
+
+
     private boolean isValidUpdate(int[][] pieceCoor) {
-        System.out.printf("Rows: %d\tCols: %d\n", pieceCoor.length, pieceCoor[0].length);
+        //System.out.printf("Rows: %d\tCols: %d\n", pieceCoor.length, pieceCoor[0].length);
         for (int row = 0; row < pieceCoor.length; row++) {
-            System.out.printf("(%d, %d)\n", pieceCoor[row][0], pieceCoor[row][1]);
-            System.out.println(pieceCoor[row][1] >= VERTICLE_SPACES);
+            //System.out.printf("(%d, %d)\n", pieceCoor[row][0], pieceCoor[row][1]);
+            //System.out.println(pieceCoor[row][1] >= VERTICLE_SPACES);
             if (pieceCoor[row][1] >= VERTICLE_SPACES
                 || grid[pieceCoor[row][0]][pieceCoor[row][1]] == Marker.STATIC) {
                 return false;
@@ -185,3 +234,41 @@ public class TetrisBoard extends ImageView {
     }
 
 }
+/**
+class Controls extends KeyAdapter {
+
+    private int[] moveVector;
+    private double rotation;
+
+    public Controls() {
+        this.moveVector = new int[] {0, 0};
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        System.out.println(e.getKeyCode());
+        switch (e.getKeyCode()) {
+        case KeyEvent.VK_A: --this.moveVector[0];
+            System.out.println("A Detected");
+            break;
+        case KeyEvent.VK_S: ++this.moveVector[1];
+            break;
+        case KeyEvent.VK_D: ++this.moveVector[0];
+            break;
+        case KeyEvent.VK_Q: rotation += Math.PI / 2;
+            break;
+        case KeyEvent.VK_E: rotation -= Math.PI / 2;
+            break;
+        }
+    }
+
+    public int[] getMoveVector() {
+        return this.moveVector;
+    }
+
+    public double getRotation() {
+        return this.rotation;
+    }
+
+}
+*/
