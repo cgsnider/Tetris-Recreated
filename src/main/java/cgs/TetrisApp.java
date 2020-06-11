@@ -1,5 +1,7 @@
 package cgs;
 
+import cgs.customComponents.*;
+
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.layout.VBox;
@@ -30,7 +32,7 @@ public class TetrisApp extends Application implements EventHandler<KeyEvent> {
         this.input = new ArrayList<>();
 
         this.spine = new VBox();
-        this.gameBoard = new TetrisBoard(TetrisBoard.GameType.RANDOM, this.input);
+        this.gameBoard = new TetrisBoard(this.input);
 
         this.spine.getChildren().addAll(gameBoard);
 
