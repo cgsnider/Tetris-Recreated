@@ -27,21 +27,36 @@ public class TetrisPiece {
     private Color color;
     private SimpleMatrix spaces;
     private int[] loc;
+    private Pieces pieceType;
+    private int rotations;
 
     public TetrisPiece(Pieces piece) {
         //this.color = COLOR_BANK.get(int)(Math.random() * COLOR_BANK.length));
         this.color = this.selectColor();
+        this.rotations = 0;
         this.spaces = new SimpleMatrix(findSpaces(piece));
         this.loc = new int[] {TetrisBoard.getWidth() / 2, 0};
+        this.pieceType = piece;
         //System.out.println(spaces);
         //System.out.printf("X-coordinate: %d Y-coordinate: %d\n",loc[0], loc[1]);
         //System.out.println(piece);
     }
 
-    public TetrisPiece(Pieces piece, int[] loc) {
+    public TetrisPiece(Pieces piece, int[] loc, int rotations) {
+        this.pieceType = piece;
         this.color = this.selectColor();
         this.spaces = new SimpleMatrix(findSpaces(piece));
         this.loc = loc;
+        this.rotations = rotations;
+        this.rotatePiece(this.rotations);
+    }
+
+    public Pieces getPieceType() {
+        return this.pieceType;
+    }
+
+    public int getRotations() {
+        return this.rotations;
     }
 
     private Color selectColor() {
@@ -60,7 +75,7 @@ public class TetrisPiece {
         double radians = rotations * Math.PI / 2;
         SimpleMatrix rotation = new SimpleMatrix(new double[][] {
             {Math.cos(radians), Math.sin(radians)}, {-1 * Math.sin(radians), Math.cos(radians)}});
-        System.out.println(rotation + " " + this.spaces);
+        //System.out.println(rotation + " " + this.spaces);
         this.spaces = this.spaces.mult(rotation);
     }
 
@@ -74,7 +89,12 @@ public class TetrisPiece {
         }
         this.loc[0] += vector[0];
         this.loc[1] += vector[1];
+        System.out.println("Location: " + Arrays.toString(this.loc));
         return true;
+    }
+
+    public int[] getLocation() {
+        return this.loc;
     }
 
     public int[][] getSpaces() {

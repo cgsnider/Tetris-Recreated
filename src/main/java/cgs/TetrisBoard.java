@@ -98,17 +98,28 @@ public class TetrisBoard extends ImageView {
                     */
                     try {
                         Thread.sleep(DELAY);
+                        if (controls.contains(KeyCode.P)) {
+                            controls.remove(controls.indexOf(KeyCode.P));
+                            while (!controls.contains(KeyCode.P)) {
+                                Thread.sleep(10);
+                            }
+                            controls.remove(controls.indexOf(KeyCode.P));
+                        }
                     } catch(InterruptedException ie) {
                         System.err.println(ie);
                         System.exit(3);
                     }
+
                     movement = this.processInput();
                     if (movement[0] != 0 || movement[1] != 0) {
+                        System.out.println("User Move");
                         this.piece.movePiece(new int[] {movement[0], movement[1]});
                     }
                     if (movement[2] != 0) {
+                        System.out.println("User Rotate");
                         this.piece.rotatePiece(movement[2]);
                     }
+                    System.out.println("Gravity");
                     this.piece.movePiece(FALLING_VECTOR);
                     if (this.isValidUpdate(this.piece.getSpaces())) {
                         this.updateGrid(this.piece.getSpaces(), false);
@@ -116,51 +127,123 @@ public class TetrisBoard extends ImageView {
 
                         this.updateGrid(null, true);
                         isFalling = false;
+                        System.out.println("Piece has landed");
                     }
                     this.updateBoard();
                     //System.out.println("isFalling: " + isFalling);
                 }
             } else {
                 this.gameOver = true;
+                System.out.println("GameOver!");
             }
         }
     }
 
     private int[] processInput() {
-        int[] vector = new int[] {0,0,0};
+        int[][] testSpaces = this.piece.getSpaces();
         KeyCode[] options = new KeyCode[] {KeyCode.A, KeyCode.S, KeyCode.D, KeyCode.Q, KeyCode.E};
+        TetrisPiece testPiece;
+        int[] testVector = new int[] {0, 0, 0};
+        int[] finalVector = new int[] {0, 0, 0};
         for (KeyCode opt : options) {
             int index = this.controls.indexOf(opt);
             while (index != -1) {
                 switch (opt) {
-                case A: vector[0]--;
+                case A: testVector[0]--;
                     break;
-                case S: vector[1]++;
+                case S: testVector[1]++;
                     break;
-                case D: vector[0]++;
+                case D: testVector[0]++;
                     break;
-                case Q: vector[2]--;
+                case Q: testVector[2]--;
                     break;
-                case E: vector[2]++;
+                case E: testVector[2]++;
                     break;
                 } //switch
                 this.controls.remove(index);
                 index = this.controls.indexOf(opt);
-                System.out.println(this.controls);
-            } //while
-        } //for-each
-        return vector;
+                if (testVector[0] != 0 || testVector[1] != 0 || testVector[2] != 0) {
+                    testPiece = new TetrisPiece(this.piece.getPieceType(),
+                    Arrays.copyOf(this.piece.getLocation(), 2), this.piece.getRotations());
+                    if (testVector[0] != 0 || testVector[1] != 0) {
+                        testPiece.movePiece(new int[] {testVector[0], testVector[1]});
+                    }
+                    if (testVector[2] != 0) {
+                        testPiece.rotatePiece(testVector[2]);
+                    }
+                    ++testVector[1]; //simulates gravity
+                    if (this.isValidUpdate(testPiece.getSpaces())) {
+                        --testVector[1];
+                        finalVector = Arrays.copyOf(testVector, 3);
+                    } else {
+                        testVector = Arrays.copyOf(finalVector, 3);
+                    }
+                }
+            }
+        }
+        return finalVector;
     }
 
+/*
+    private int[] processInput() {
+        int[] moveVector = new int[] {0,0,0};
+        int[] testVector = new int[] {0,0,0};
+        KeyCode[] options = new KeyCode[] {KeyCode.A, KeyCode.S, KeyCode.D, KeyCode.Q, KeyCode.E};
+        for (KeyCode opt : options) {
+            int index = this.controls.indexOf(opt);
+            TetrisPiece testPiece = new TetrisPiece(this.piece.getPieceType(),
+                this.piece.getLocation(), this.piece.getRotations());
+            while (index != -1) {
+                switch (opt) {
+                case A: testVector[0]--;
+                    break;
+                case S: testVector[1]++;
+                    break;
+                case D: testVector[0]++;
+                    break;
+                case Q: testVector[2]--;
+                    break;
+                case E: testVector[2]++;
+                    break;
+                } //switch
+
+                this.controls.remove(index);
+                index = this.controls.indexOf(opt);
+                if (testVector[0] != 0 || testVector[1] != 0) {
+                    System.out.println("Testing testVector: " + Arrays.toString(testVector));
+                    testPiece.movePiece(new int[] {testVector[0], testVector[1]});
+                }
+                if (testVector[2] != 0) {
+                    testPiece.rotatePiece(testVector[2]);
+                }
+                ++testVector[1];
+                if (this.isValidUpdate(testPiece.getSpaces())) {
+                    --testVector[1];
+                    for (int i = 0; i < moveVector.length; i++) {
+                        moveVector[i] = testVector[i];
+                    }
+                    System.out.println("Valid: " + opt);
+                } else {
+                    for (int i = 0; i < moveVector.length; i++) {
+                        testVector[i] = moveVector[i];
+                    }
+                    System.out.println("Invalid: " + opt);
+                }
+
+                //System.out.println(this.controls);
+            } //while
+        } //for-each
+        System.out.println("MoveVector: " + Arrays.toString(moveVector));
+        return moveVector;
+    }
+*/
 
 
     private boolean isValidUpdate(int[][] pieceCoor) {
-        //System.out.printf("Rows: %d\tCols: %d\n", pieceCoor.length, pieceCoor[0].length);
         for (int row = 0; row < pieceCoor.length; row++) {
-            //System.out.printf("(%d, %d)\n", pieceCoor[row][0], pieceCoor[row][1]);
-            //System.out.println(pieceCoor[row][1] >= VERTICLE_SPACES);
             if (pieceCoor[row][1] >= VERTICLE_SPACES
-                || grid[pieceCoor[row][0]][pieceCoor[row][1]] == Marker.STATIC) {
+            || pieceCoor[row][0] < 0 || pieceCoor[row][0] >= HORIZONTAL_SPACES
+            || grid[pieceCoor[row][0]][pieceCoor[row][1]] == Marker.STATIC) {
                 return false;
             }
         }
@@ -234,7 +317,7 @@ public class TetrisBoard extends ImageView {
     }
 
 }
-/**
+/*
 class Controls extends KeyAdapter {
 
     private int[] moveVector;
