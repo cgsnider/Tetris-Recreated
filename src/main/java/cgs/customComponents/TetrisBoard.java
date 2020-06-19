@@ -23,6 +23,7 @@ public class TetrisBoard extends ImageView {
     public static final Color BACKGROUND_COLOR = Color.DARK_GRAY;
     public static final int DISPLAY_SCALE = 25;
     public static final Color OUTLINE_COLOR = Color.BLACK;
+    public static final Color PILE_COLOR = Color.YELLOW;
 
     private BufferedImage display;
     private Marker[][] board;
@@ -56,39 +57,7 @@ public class TetrisBoard extends ImageView {
         this.game = new GamePlay();
 
     }
-/*
-    protected void  paint (Color pieceColor) {
-        int displayX;
-        int displayY;
-        for (int x = 0; x < this.board.length; x++) {
-            for (int y = 0; y < this.board[x].length; y++) {
-                if (this.board[x][y] == Marker.DYNAMIC || this.board[x][y] == Marker.SHADOW) {
-                    displayX = x * DISPLAY_SCALE;
-                    displayY = y * DISPLAY_SCALE;
-                    switch (this.board[x][y]) {
-                    case DYNAMIC:
-                        this.painter.setColor(pieceColor);
-                        break;
-                    case SHADOW:
-                        this.painter.setColor(BACKGROUND_COLOR);
-                        this.painter.drawRect(displayX, displayY,
-                        DISPLAY_SCALE, DISPLAY_SCALE);
-                        this.board[x][y] = Marker.EMPTY;
-                        break;
-                    } //switch
-                    this.painter.fillRect(displayX, displayY,
-                    DISPLAY_SCALE, DISPLAY_SCALE);
-                    if (this.board[x][y] == Marker.DYNAMIC) {
-                        this.painter.setColor(OUTLINE_COLOR);
-                        this.painter.drawRect(displayX, displayY,
-                        DISPLAY_SCALE, DISPLAY_SCALE);
-                    } //if
-                } //if
-            } //for
-        } //for
-        this.setImage(SwingFXUtils.toFXImage(display, null));
-    } //paint()
-*/
+
     private void markAndPaint
     (int[][] squares, Marker marker, Color fillColor, Color borderColor) {
         int x, y, displayX, displayY;
@@ -130,6 +99,73 @@ public class TetrisBoard extends ImageView {
         this.usedColors = new LinkedList<Color>();
     }
 
+    private Piece manageBoard() {
+
+        List<Integer> fullRows = new LinkedList<>();
+        RowStatus status = RowStatus.PARTIAL;
+        for (int row = VERTICAL_SPACES - 1; row >= 0 && status != RowStatus.EMPTY; row--) {
+            status = this.checkRow(row);
+            if (status == RowStatus.FULL) {
+                fullRows.add(row);
+            }
+        }
+        if (fullRows.size() > 0) {
+            int topRow = fullRows.get(fullRows.size() - 1);
+            for (Integer row : fullRows) {
+                this.clearRow(row);
+            }
+            Piece piece = this.createAvalanche(topRow);
+            this.markAndPaint(piece.getSpaces(), Marker.DYNAMIC,
+                BACKGROUND_COLOR, BACKGROUND_COLOR);
+            return piece;
+        } else {
+            return null;
+        }
+    }
+
+    private void clearRow (int row){
+        int[][] coordinates = new int[HORIZONTAL_SPACES][2];
+        for (int i = 0; i < HORIZONTAL_SPACES; i++) {
+            coordinates[i][0] = i;
+            coordinates[i][1] = row;
+        }
+        this.markAndPaint(coordinates, Marker.EMPTY, BACKGROUND_COLOR, BACKGROUND_COLOR);
+    }
+
+    private RowStatus checkRow (int row) {
+        int numEmpty = 0;
+        for (int x = 0; x < HORIZONTAL_SPACES; x++) {
+            if (this.board[x][row] == Marker.EMPTY) {
+                ++numEmpty;
+            }
+        }
+        if (numEmpty == 0) {
+            return RowStatus.FULL;
+        } else if (numEmpty == HORIZONTAL_SPACES) {
+            return RowStatus.EMPTY;
+        } else {
+            return RowStatus.PARTIAL;
+        }
+    }
+
+    private Piece createAvalanche (int row) {
+        List<int[]> avalancheSpaces = new LinkedList<int[]>();
+        for (int x = 0; x < HORIZONTAL_SPACES; x++) {
+            for (int y = 0; y < row && y < VERTICAL_SPACES; y++) {
+                if (this.board[x][y] == Marker.STATIC) {
+                    int[] coor = new int[] {x, y};
+                    avalancheSpaces.add(coor);
+                    this.board[x][y] = Marker.EMPTY;
+                } //if
+            } //for
+        } //for
+        int[][] spaces = new int[avalancheSpaces.size()][2];
+        for (int i = 0; i < spaces.length; i++) {
+            spaces[i] = avalancheSpaces.get(i);
+        }
+        return new Piece(spaces, Color.MAGENTA);
+    }
+
     public static int[][] copy2D (int[][] arr) {
         int[][] clone = new int[arr.length][0];
         for (int row = 0; row < arr.length; row++) {
@@ -144,6 +180,10 @@ public class TetrisBoard extends ImageView {
         }
     }
 
+    public enum RowStatus {
+        FULL, EMPTY, PARTIAL;
+    }
+
     public enum Marker {
         STATIC, DYNAMIC, EMPTY, SHADOW
     };
@@ -155,7 +195,7 @@ public class TetrisBoard extends ImageView {
         TPIECE (new int[][] {{1,1}, {0,1}, {1,0}, {2,1}}, 1),
         JPIECE (new int[][] {{1,1}, {0,0}, {0,1}, {2,1}}, 1),
         LPIECE (new int[][] {{1,1}, {0,1}, {2,0}, {2,1}}, 1),
-        IPIECE (new int[][] {{2,0}, {1,0}, {0,0}, {3,0}}, 2);
+        IPIECE (new int[][] {{2,0}, {1,0}, {0,0}, {3,0}}, 2),
 
         public static final List<PieceType> PIECES =
             Collections.unmodifiableList(Arrays.asList(values()));
@@ -177,14 +217,21 @@ public class TetrisBoard extends ImageView {
         }
 
         public static PieceType randomPieceType() {
-            return PIECES.get((int)(Math.random() * PIECES.size()));
+            return PIECES.get((int)(Math.random() * PIECES.size() - 1));
         }
 
     };
 
+    /**
+     * Handles the execution of the game.
+     * Executes and contains the threads this {@code TetrisBoard} object needs to play the its game
+     * properly. Contains only methods that manage threads or methods that contains the actions of
+     * the threads. All of the actual action taken uses the outer {@code TetrisBoard} class.
+     */
     class GamePlay {
 
         /**
+         * Timing:
          * TICK is the fundamental unit of game time.
          * 1 TICK = 50 milliseconds = .05 seconds
          * All other times in this class are measured in TICKS
@@ -200,13 +247,17 @@ public class TetrisBoard extends ImageView {
         private boolean gameOn;
         private boolean drop;
         private boolean pause;
+        private Object pauseWaiter;
+        private boolean enableControls;
 
         public GamePlay () {
             this.piece = this.selectPiece();
             this.gameOn = true;
             this.drop = false;
             this.pause = false;
+            this.enableControls = false;
             this.sync = new Object();
+            this.pauseWaiter = new Object();
 
             this.runDaemon(this::clockLoop);
             this.runDaemon(this::controlLoop);
@@ -220,9 +271,6 @@ public class TetrisBoard extends ImageView {
                 this.sleep(TICK);
                 ++clock;
                 this.notifyAll(this.sync);
-                //System.out.println(clock);
-                //printBoard();
-                //print2D(this.piece.getSpaces());
             }
         }
 
@@ -253,23 +301,23 @@ public class TetrisBoard extends ImageView {
 
         private void runDaemon(Runnable run)  {
             Thread thread = new Thread(run);
-            thread.setDaemon(false);
+            thread.setDaemon(true);
             thread.start();
         }
 
         private void controlLoop () {
             this.wait(this.sync);
+            this.enableControls = true;
             while (gameOn) {
                 this.wait(this.sync);
                 this.processControls();
-                //paint(this.piece.getColor());
             }
         }
 
         public void wait (Object sync) {
             try {
-                synchronized(this.sync) {
-                    this.sync.wait();
+                synchronized(sync) {
+                    sync.wait();
                 }
             } catch (InterruptedException ie) {
                 System.err.println(ie);
@@ -278,8 +326,8 @@ public class TetrisBoard extends ImageView {
         }
 
         private void notifyAll (Object sync) {
-            synchronized(this.sync) {
-                this.sync.notifyAll();
+            synchronized(sync) {
+                sync.notifyAll();
             }
         }
 
@@ -298,17 +346,30 @@ public class TetrisBoard extends ImageView {
             while (gameOn) {
                 isFalling = true;
                 while (isFalling) {
+                    if (this.pause) {
+                        this.wait(this.pauseWaiter);
+                    }
                     for (int i = 0; !this.drop && i < FALL_SPEED; i++) {
                         this.wait(this.sync);
                     } //for
                     this.drop = false;
                     isFalling = (this.piece.move(0, 1)) ? true : false;
-                    if (isFalling) {
-                        //paint(this.piece.getColor());
-                    } else {
+                    if (!isFalling) {
                         mark(this.piece.getSpaces(), Marker.STATIC);
+                        this.enableControls = false;
+                        this.piece = manageBoard();
+                        if (this.piece != null) {
+                            while (this.piece.move(0,1)) {
+                                this.wait(this.sync);
+                            }
+                            mark(this.piece.getSpaces(), Marker.STATIC);
+                        }
                         this.piece = this.selectPiece();
+                        this.enableControls = true;
+                        this.gameOn =
+                            (this.piece.isValidSpaces()) ? true : false;
                     }
+
                 } //while
 
             } //while
@@ -319,13 +380,14 @@ public class TetrisBoard extends ImageView {
         }
 
         private void processControls () {
-
             while (!controls.isEmpty()) {
-                System.out.println("Controls: " + controls);
                 if (controls.get(0) == KeyCode.P) {
                     this.pause = (this.pause) ? false : true;
                     controls.remove(0);
-                } else if (!this.pause) {
+                    if (this.pause == false) {
+                        this.notifyAll(this.pauseWaiter);
+                    }
+                } else if (!this.pause && this.enableControls) {
                     switch (controls.remove(0)) {
                     case A:
                         this.piece.move(-1, 0);
@@ -344,9 +406,12 @@ public class TetrisBoard extends ImageView {
                         break;
                     } //switch
 
-                } //else if
+                } else {
+                    controls.remove(0);
+                }
             } //while
         } //processControls
+
 
     } //GamePlay
 
@@ -354,7 +419,6 @@ public class TetrisBoard extends ImageView {
 
         private int[][] spaces;
         private Color color;
-        private PieceType type;
         private List<Integer> pivot;
 
         public Piece (PieceType type) {
@@ -364,8 +428,12 @@ public class TetrisBoard extends ImageView {
             for (int i = 0; i < type.getPivotNum(); i++) {
                 this.pivot.add(i);
             }
-            System.out.println(type);
-            print2D(this.spaces);
+        }
+
+        public Piece (int[][] spaces, Color color) {
+            this.spaces = spaces;
+            this.color = color;
+            this.pivot = null;
         }
 
         public int[][] getSpaces () {
@@ -377,16 +445,13 @@ public class TetrisBoard extends ImageView {
         }
 
         public boolean rotate(int rotations) {
-            System.out.println("Checkpoint 1");
             int[][] oldSpaces = this.copy2D(this.spaces);
             this.rotatePiece(rotations);
             if (this.isValidSpaces()) {
-                System.out.println("Checkpoint 2, Valid");
                 markAndPaint(oldSpaces, Marker.EMPTY, BACKGROUND_COLOR, BACKGROUND_COLOR);
                 markAndPaint(this.spaces, Marker.DYNAMIC, this.color, OUTLINE_COLOR);
                 return true;
             } else {
-                System.out.println("Checkpoint 2: Invalid");
                 this.spaces = oldSpaces;
                 return false;
             }
@@ -398,7 +463,6 @@ public class TetrisBoard extends ImageView {
             if (this.isValidSpaces()) {
                 markAndPaint(oldSpaces, Marker.EMPTY, BACKGROUND_COLOR, BACKGROUND_COLOR);
                 markAndPaint(this.spaces, Marker.DYNAMIC, this.color, OUTLINE_COLOR);
-                //System.out.println("Mark and Move");
                 return true;
             } else {
                 this.spaces = oldSpaces;
@@ -427,9 +491,8 @@ public class TetrisBoard extends ImageView {
         }
 
         private boolean rotatePiece(int rotations) {
-            print2D(this.spaces);
-            if (this.pivot.size() == 0) {
-                return true;
+            if (this.pivot.size() == 0 && this.pivot != null) {
+                return false;
             }
 
             double[] center = new double[] {this.spaces[this.pivot.get(0)][0],
@@ -437,7 +500,6 @@ public class TetrisBoard extends ImageView {
             this.pivot.add(this.pivot.remove(0));
 
             double radians = (rotations * Math.PI / 2);
-            System.out.println("Radians: " + radians);
             SimpleMatrix rotation = new SimpleMatrix(new double[][] {
                 {Math.cos(radians), Math.sin(radians)},
                 {-Math.sin(radians), Math.cos(radians)}});
@@ -452,10 +514,6 @@ public class TetrisBoard extends ImageView {
 
             SimpleMatrix spacesMatrix = new SimpleMatrix(temp);
 
-            System.out.println();
-            System.out.println(rotation.toString() + "\n " + spacesMatrix.toString());
-            System.out.println();
-
             spacesMatrix = spacesMatrix.mult(rotation);
 
             for (int row = 0; row < this.spaces.length; row++) {
@@ -464,7 +522,6 @@ public class TetrisBoard extends ImageView {
                     + center[col]);
                 }
             }
-            print2D(this.spaces);
 
             return true;
 
