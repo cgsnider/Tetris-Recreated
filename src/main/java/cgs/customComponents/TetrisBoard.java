@@ -17,8 +17,10 @@ import javafx.stage.Stage;
 import javafx.stage.Modality;
 import javafx.scene.image.Image;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.scene.Scene;
 import javafx.application.Platform;
+import javafx.scene.control.Button;
 
 /**
  * A custom component built from an ImageView that runs the game Tetris.
@@ -632,8 +634,16 @@ public class TetrisBoard extends ImageView {
             ImageView imv = new ImageView("file:resources/GameOver.png");
             imv.setPreserveRatio(true);
 
+            Button exit = new Button("Exit Game");
+            exit.setOnAction(ae -> System.exit(0));
+            Button closeWindow = new Button("Close GameOver");
+            closeWindow.setOnAction(ae -> popup.close());
+            HBox buttonBox = new HBox(exit, closeWindow);
+            buttonBox.setAlignment(javafx.geometry.Pos.CENTER);
+
             VBox vbox = new VBox();
-            vbox.getChildren().addAll(imv);
+            vbox.getChildren().addAll(imv, buttonBox);
+            vbox.setAlignment(javafx.geometry.Pos.CENTER);
 
             Scene scene = new Scene(vbox);
             popup.setScene(scene);
