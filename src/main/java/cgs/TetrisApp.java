@@ -10,8 +10,9 @@ import javafx.stage.Stage;
 import javafx.event.EventHandler;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.KeyCode;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import javafx.scene.layout.Priority;
 
 /**
  * Creates an instance of the game tetris.
@@ -25,16 +26,23 @@ public class TetrisApp extends Application implements EventHandler<KeyEvent> {
 
 
     /**
-     * Starts the javafx Tetris application
+     * Starts the javafx Tetris application.
+     * @param stage the stage of the application.
      */
     @Override
     public void start(Stage stage) {
-        this.input = new ArrayList<>();
+        this.input = new LinkedList<>();
 
         this.spine = new VBox();
-        this.gameBoard = new TetrisBoard(this.input);
+
+        this.gameBoard = new TetrisBoard(this.input, stage);
+        this.gameBoard.fitWidthProperty().bind(this.spine.widthProperty());
+        this.gameBoard.fitHeightProperty().bind(this.spine.heightProperty());
+        this.gameBoard.setPreserveRatio(true);
 
         this.spine.getChildren().addAll(gameBoard);
+
+
 
         Scene scene = new Scene(this.spine);
         scene.setOnKeyPressed(this::handle);
@@ -48,6 +56,9 @@ public class TetrisApp extends Application implements EventHandler<KeyEvent> {
 
     } //start
 
+    /**
+     * Handles KeyEvents by logging them in a list.
+     */
     @Override
     public void handle(KeyEvent e) {
         //System.out.println(e.getCode());

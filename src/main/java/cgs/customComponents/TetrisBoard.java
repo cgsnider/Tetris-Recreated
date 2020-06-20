@@ -13,6 +13,12 @@ import java.util.Arrays;
 import org.ejml.simple.SimpleMatrix;
 import java.util.Collections;
 import java.lang.Runnable;
+import javafx.stage.Stage;
+import javafx.stage.Modality;
+import javafx.scene.image.Image;
+import javafx.scene.layout.VBox;
+import javafx.scene.Scene;
+import javafx.application.Platform;
 
 /**
  * A custom component built from an ImageView that runs the game Tetris.
@@ -62,13 +68,18 @@ public class TetrisBoard extends ImageView {
     /* The gameplay and the threads that control the game */
     private GamePlay game;
 
+    /* The stage that contains this TetrisBoard, allows the creation of new windows */
+
+    private Stage stage;
+
     /**
      * Creates a new TetrisBoard componet instance with a grey rectangle
      * representing an empty board.
      * @param controls the list of player input.
      */
-    public TetrisBoard (List<KeyCode> controls) {
+    public TetrisBoard (List<KeyCode> controls, Stage stage) {
         this.controls = controls;
+        this.stage = stage;
 
         this.board = new Marker[HORIZONTAL_SPACES][VERTICAL_SPACES];
         for (int x = 0; x < this.board.length; x++) {
@@ -467,7 +478,7 @@ public class TetrisBoard extends ImageView {
         /**
          * To be run in its own thread.
          * The main gameplay thread that handles the core elements of the game.
-         * Moves the piece downwards, clears full rows, manages the state of the game.
+         * Moves the piece downwards, clears full rows, manages whether the game is in play.
          */
         private void gameplayLoop () {
             boolean isFalling;
@@ -500,8 +511,8 @@ public class TetrisBoard extends ImageView {
                     }
 
                 } //while
-
             } //while
+            Platform.runLater(this::gameOver);
         }
 
         /* Thread method helpers */
@@ -609,7 +620,25 @@ public class TetrisBoard extends ImageView {
             }
         }
 
+        private void gameOver () {
+            Stage popup = new Stage();
+            popup.initOwner(stage);
+            popup.initModality(Modality.WINDOW_MODAL);
+            popup.setAlwaysOnTop(true);
+            popup.setMinWidth(TetrisBoard.this.getFitWidth() / 5);
+            popup.setMinHeight(popup.getMinWidth() / 1.5);
+            popup.setTitle("Game Over!");
 
+            ImageView imv = new ImageView("file:resources/GameOver.png");
+            imv.setPreserveRatio(true);
+
+            VBox vbox = new VBox();
+            vbox.getChildren().addAll(imv);
+
+            Scene scene = new Scene(vbox);
+            popup.setScene(scene);
+            popup.showAndWait();
+        }
 
 
 
