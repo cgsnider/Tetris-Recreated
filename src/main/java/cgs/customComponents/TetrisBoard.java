@@ -21,6 +21,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.Scene;
 import javafx.application.Platform;
 import javafx.scene.control.Button;
+import javafx.scene.text.Text;
 
 /**
  * A custom component built from an ImageView that runs the game Tetris.
@@ -448,7 +449,7 @@ public class TetrisBoard extends ImageView {
             this.runDaemon(this::clockLoop);
             this.runDaemon(this::controlLoop);
             this.runDaemon(this::gameplayLoop);
-
+            this.welcomeScreen();
         }
 
         /* Thread methods */
@@ -458,6 +459,7 @@ public class TetrisBoard extends ImageView {
          * Controls the clock enabling all the threads to follow one game beat.
          */
         private void clockLoop () {
+            this.wait(this.sync);
             while (gameOn) {
                 this.sleep(TICK);
                 this.notifyAll(this.sync);
@@ -622,14 +624,32 @@ public class TetrisBoard extends ImageView {
             }
         }
 
+
+        private void welcomeScreen () {
+            Stage popup = this.createPopup("Welcome!");
+            Text text = new Text("Welcome!\nThe controls are:\n" +
+                "A to move left\nS to move down\nD to move right\n"
+                + "Q to rotate counter clockwise\n"
+                + "E to rotate clockwise\n"
+                + "Good Luck!");
+            Button startGame = new Button("Start Game!");
+            startGame.setOnAction(ae -> {
+                notifyAll(sync);
+                popup.close();
+            });
+
+            VBox vbox = new VBox(text, startGame);
+            vbox.setAlignment(javafx.geometry.Pos.CENTER);
+
+            Scene scene = new Scene(vbox);
+            popup.setScene(scene);
+            popup.showAndWait();
+
+        }
+
         private void gameOver () {
-            Stage popup = new Stage();
-            popup.initOwner(stage);
-            popup.initModality(Modality.WINDOW_MODAL);
-            popup.setAlwaysOnTop(true);
-            popup.setMinWidth(TetrisBoard.this.getFitWidth() / 5);
-            popup.setMinHeight(popup.getMinWidth() / 1.5);
-            popup.setTitle("Game Over!");
+
+            Stage popup = this.createPopup("Game Over!");
 
             ImageView imv = new ImageView("file:resources/GameOver.png");
             imv.setPreserveRatio(true);
@@ -650,7 +670,16 @@ public class TetrisBoard extends ImageView {
             popup.showAndWait();
         }
 
-
+        private Stage createPopup (String title) {
+            Stage popup = new Stage();
+            popup.initOwner(stage);
+            popup.initModality(Modality.WINDOW_MODAL);
+            popup.setAlwaysOnTop(true);
+            popup.setMinWidth(200);
+            popup.setMinHeight(300);
+            popup.setTitle(title);
+            return popup;
+        }
 
     } //GamePlay
 
